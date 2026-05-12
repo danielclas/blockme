@@ -230,14 +230,16 @@ echo "Step 7: assert the non-managed pre-existing file is untouched"
 grep -q "10.0.0.1" "$NONOURS" || fail "we modified a non-managed file (BUG)"
 pass "non-managed file untouched"
 
-echo "Step 8: assert NOTHING was written outside the sandbox"
-# Sanity check: at this point /etc/resolver should be untouched compared to
-# before the test. We can't easily diff that, but we can at least verify our
-# sentinel domain files don't exist in the real /etc/resolver.
-for d in instagram.com linkedin.com mask.icloud.com mask-h2.icloud.com; do
-  [[ ! -e "/etc/resolver/$d" ]] || fail "BUG: wrote to REAL /etc/resolver/$d"
-done
-pass "no writes to real /etc/resolver"
+echo "Step 8: assert NOTHING was written to the real /etc/resolver"
+# The sandbox uses a unique port ($STUB_PORT). If we accidentally wrote to the
+# real /etc/resolver, the file there would contain that port. Pre-existing
+# files from a live install use a different port (5454) and are fine.
+if [[ -d /etc/resolver ]]; then
+  if grep -RIls "^port $STUB_PORT\$" /etc/resolver >/dev/null 2>&1; then
+    fail "BUG: sandbox port $STUB_PORT was written into a real /etc/resolver/* file"
+  fi
+fi
+pass "no writes to real /etc/resolver (sandbox port not found there)"
 
 echo "Step 9: idempotent re-sync — must report no changes"
 OUT2=$(run_driver sync)

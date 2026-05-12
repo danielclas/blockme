@@ -174,28 +174,38 @@ They run the same three steps above. The build is reproducible on every Mac.
 - Xcode Command Line Tools (Step 1 above)
 - Admin password (just for install/add/uninstall)
 
-## Project structure (for the curious)
+## Project structure (the whole tree, no hidden files)
 
 ```
-Sources/
-├── SteadfastCore/                   ← all the logic, as a Swift library
-│   ├── ResolverDirectoryManager.swift   ← writes /etc/resolver/<domain> files
-│   ├── NXDomainStub.swift               ← the 1-job UDP server (always NXDOMAIN)
-│   ├── HostsManager.swift               ← /etc/hosts fallback
-│   ├── BlocklistStore.swift             ← reads/writes the blocklist JSON
-│   ├── LaunchdManager.swift             ← install / uninstall / launchd
-│   ├── CLI.swift                        ← every subcommand
-│   └── ...
-├── steadfast/                       ← thin CLI entrypoint
-└── blockme/                         ← the SwiftUI GUI app
-
-Tests/
-└── SteadfastCoreTests/              ← unit tests (12 of them, all green)
-
-Scripts/
-├── sandbox-harness.sh               ← integration test against a fake root prefix
-├── install-blockme-app.sh           ← app-only install (used by install.sh)
-└── package-blockme-app.sh           ← builds Blockme.app
+.
+├── README.md, LICENSE, .gitignore
+├── Package.swift                    ← Swift Package Manager manifest
+├── install.sh                       ← what you run
+├── Install Blockme.command          ← double-click alias for install.sh
+├── Resources/
+│   └── BlockmeIcon.svg              ← icon source (rendered to .icns at build time)
+├── Sources/
+│   ├── SteadfastCore/               ← the entire backend as a Swift library
+│   │   ├── ResolverDirectoryManager.swift  ← writes /etc/resolver/<domain> files
+│   │   ├── NXDomainStub.swift              ← UDP server that always returns NXDOMAIN
+│   │   ├── HostsManager.swift              ← /etc/hosts managed section
+│   │   ├── BlocklistStore.swift            ← reads/writes the blocklist JSON
+│   │   ├── LaunchdManager.swift            ← install / uninstall / launchd plist
+│   │   ├── CLI.swift                       ← every subcommand
+│   │   ├── ActiveConnectionDisruptor.swift ← `pfctl -k` to drop live TCP on add
+│   │   ├── DomainNormalizer.swift          ← URL/host validation
+│   │   ├── Paths.swift                     ← every file path the daemon touches
+│   │   ├── PublicStatusStore.swift         ← the JSON the GUI reads
+│   │   └── Shell.swift                     ← Process wrapper
+│   ├── steadfast/                   ← thin CLI entrypoint
+│   └── blockme/                     ← the SwiftUI GUI app
+├── Tests/
+│   └── SteadfastCoreTests/          ← 11 unit tests, all green
+└── Scripts/
+    ├── sandbox-harness.sh           ← end-to-end test against a fake root prefix
+    ├── install-blockme-app.sh       ← packages + installs Blockme.app
+    ├── package-blockme-app.sh       ← builds Blockme.app
+    └── render-icon.swift            ← renders the SVG to PNG for iconutil
 ```
 
 If you want to run the test suite:

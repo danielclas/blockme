@@ -9,6 +9,7 @@ ICON_THUMBNAIL_DIR="$ROOT_DIR/dist/icon-preview"
 ICON_RENDERER="$ROOT_DIR/Scripts/render-icon.swift"
 ICON_PREVIEW="$ICON_THUMBNAIL_DIR/BlockmeIcon.png"
 BUILD_DIR="$ROOT_DIR/.build"
+ICON_OUTPUT="$BUILD_DIR/AppIcon.icns"
 RELEASE_BINARY="$BUILD_DIR/release/blockme"
 DIST_APP="$ROOT_DIR/dist/$APP_NAME"
 CONTENTS_DIR="$DIST_APP/Contents"
@@ -41,7 +42,8 @@ make_icon 512 "$ICONSET_DIR/icon_256x256@2x.png"
 make_icon 512 "$ICONSET_DIR/icon_512x512.png"
 cp "$ICON_PREVIEW" "$ICONSET_DIR/icon_512x512@2x.png"
 
-/usr/bin/iconutil -c icns "$ICONSET_DIR" -o "$ROOT_DIR/AppResources/AppIcon.icns"
+mkdir -p "$BUILD_DIR"
+/usr/bin/iconutil -c icns "$ICONSET_DIR" -o "$ICON_OUTPUT"
 
 echo "Building release app binary..."
 swift build -c release --product blockme
@@ -56,7 +58,7 @@ rm -rf "$DIST_APP"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 /bin/cp "$RELEASE_BINARY" "$MACOS_DIR/$APP_BINARY_NAME"
 /bin/chmod 755 "$MACOS_DIR/$APP_BINARY_NAME"
-/bin/cp "$ROOT_DIR/AppResources/AppIcon.icns" "$RESOURCES_DIR/AppIcon.icns"
+/bin/cp "$ICON_OUTPUT" "$RESOURCES_DIR/AppIcon.icns"
 
 cat > "$INFO_PLIST" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>

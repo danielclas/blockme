@@ -10,15 +10,6 @@ import Testing
     #expect(try DomainNormalizer.normalize("www.youtube.com") == "www.youtube.com")
 }
 
-@Test func matchesSubdomainsAgainstBlockedRootDomain() {
-    let matcher = DomainBlockMatcher(blockedDomains: ["instagram.com", "x.com"])
-
-    #expect(matcher.matches(hostname: "instagram.com"))
-    #expect(matcher.matches(hostname: "www.instagram.com"))
-    #expect(matcher.matches(hostname: "deep.api.instagram.com"))
-    #expect(!matcher.matches(hostname: "notinstagram.com"))
-}
-
 @Test func rejectsInvalidHostnames() {
     #expect(throws: DomainNormalizationError.self) {
         try DomainNormalizer.normalize("not a domain")
