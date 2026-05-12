@@ -1,0 +1,21 @@
+# Build artifacts
+.DS_Store
+/.build
+/Packages
+xcuserdata/
+DerivedData/
+.swiftpm/configuration/registries.json
+.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+.swiftpm-cache/
+.clang-module-cache/
+.home/
+
+# Packaged app + intermediate working dirs
+/dist
+/install-test
+
+# Swift build's temp save-by directories (appear if SwiftPM crashes mid-build)
+(A Document Being Saved By swift-build*)
+
+# macOS / personal
+.netrc

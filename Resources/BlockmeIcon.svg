@@ -1,0 +1,32 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="112" y1="88" x2="912" y2="936" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FBF7EF"/>
+      <stop offset="1" stop-color="#E9DFC9"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="256" y1="220" x2="760" y2="820" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFDF7" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#F3EAD8" stop-opacity="0.32"/>
+    </linearGradient>
+    <filter id="shadow" x="40" y="40" width="944" height="944" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="30" stdDeviation="38" flood-color="#4D3F2A" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#shadow)">
+    <rect x="96" y="96" width="832" height="832" rx="214" fill="url(#bg)"/>
+    <rect x="96.5" y="96.5" width="831" height="831" rx="213.5" stroke="#D9CCB5"/>
+    <path d="M196 232C196 192.235 228.235 160 268 160H740C779.765 160 812 192.235 812 232V348C812 387.765 779.765 420 740 420H268C228.235 420 196 387.765 196 348V232Z" fill="url(#glow)" opacity="0.55"/>
+  </g>
+
+  <text
+    x="50%"
+    y="54%"
+    text-anchor="middle"
+    dominant-baseline="middle"
+    font-family="SF Pro Display, Inter, Helvetica Neue, Arial, sans-serif"
+    font-size="610"
+    font-weight="700"
+    letter-spacing="-32"
+    fill="#161616">b</text>
+</svg>
