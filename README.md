@@ -12,9 +12,7 @@ Built to be:
 
 ## How it works in one paragraph
 
-For each domain you block, Blockme writes a tiny file at `/etc/resolver/<domain>` that tells macOS: "for this specific domain (and its subdomains), ask the local NXDOMAIN stub on `127.0.0.1:5454`." The stub answers "does not exist" for every query it receives. **Every domain you do NOT block uses your system's normal DNS path, completely untouched.** That's the safety guarantee: if the stub crashes or the daemon dies, only blocked-domain lookups are affected. Your regular browsing is structurally insulated from any failure in the blocker.
-
-Blockme also writes `/etc/resolver/mask.icloud.com` (Apple's documented way to disable iCloud Private Relay for blocked domains, so Safari falls back to the system resolver and the block applies there too) and keeps a managed section in `/etc/hosts` as belt-and-suspenders.
+Blockme uses macOS's own DNS facilities to make blocked domains (and all of their subdomains) fail to resolve — `dig`, `curl`, Safari, and most apps will see them as "host does not exist." **Every domain you do NOT block uses your system's normal DNS path, completely untouched.** That structural separation is the safety guarantee: if the blocker process crashes for any reason, only blocked-domain lookups are affected. Your regular browsing keeps working. Safari with iCloud Private Relay is covered automatically.
 
 ## Install (foolproof, copy/paste in order)
 
@@ -46,7 +44,7 @@ What this does:
 1. Builds `Blockme.app` from source (~15 seconds)
 2. Copies it to `~/Applications/Blockme.app`
 3. **Prompts you for your macOS admin password** (one time, via a normal macOS authentication dialog)
-4. Installs the background daemon, the `blockme` command-line tool, and the per-domain resolver files
+4. Installs the background daemon and the `blockme` command-line tool, and activates any domains you previously added
 5. Opens `Blockme.app`
 
 When it's done you'll see:
@@ -71,9 +69,8 @@ You should see something like:
 
 ```
 installed: yes
-stub_listen: 127.0.0.1:5454
-private_relay_block: yes
 blocked_domains: 0
+...
 ```
 
 If `installed: yes`, you're done.
@@ -107,7 +104,7 @@ sudo blockme add example.com
 dscacheutil -q host -a name example.com
 ```
 
-You should see either no result, or the address `127.0.0.1`. In a browser, `https://example.com` will fail to load.
+You should see no result. In a browser, `https://example.com` will fail to load.
 
 Try a non-blocked site in the same browser — it should load instantly. That's the design.
 
@@ -119,14 +116,7 @@ If anything ever feels wrong, run:
 sudo blockme uninstall
 ```
 
-This:
-
-- stops the daemon
-- removes every `/etc/resolver/<domain>` file Blockme created (it never touches resolver files it didn't create)
-- removes the managed section from `/etc/hosts`
-- deletes the binary
-
-Because Blockme **never touches global DNS settings, never edits `/etc/pf.conf`, and never installs system-wide proxies**, there's nothing to "restore." Your network configuration returns to exactly what it was before install, instantly.
+This stops the daemon, removes everything Blockme installed, and deactivates blocking. Blockme **never touches your global DNS settings, `/etc/pf.conf`, or any system-wide proxy**, so there is no configuration to "restore" — your network returns to exactly its pre-install state, instantly.
 
 ## Important caveat about Chrome
 
@@ -139,23 +129,6 @@ Chrome has a feature called "Use secure DNS" (DNS-over-HTTPS) that bypasses the 
 Safari is fully covered out of the box.
 
 Firefox: it also has DoH; same fix applies in `about:preferences#privacy` → "Enable DNS over HTTPS" off.
-
-## What gets installed where
-
-| Path | What it is |
-|---|---|
-| `~/Applications/Blockme.app` | the GUI |
-| `/usr/local/libexec/steadfast/steadfast` | the actual binary the daemon runs |
-| `/usr/local/bin/blockme` | symlink so you can type `blockme` in Terminal |
-| `/usr/local/bin/steadfast` | alias of the same binary |
-| `/Library/LaunchDaemons/com.steadfast.daemon.plist` | tells `launchd` to keep the daemon running |
-| `/etc/resolver/<domain>` | one file per blocked domain — this is where the actual blocking happens |
-| `/etc/hosts` (managed section) | belt-and-suspenders fallback |
-| `/Library/Application Support/Steadfast/` | the blocklist (`blocklist.json`) and daemon state |
-| `/Library/Application Support/Blockme/status.json` | what the GUI reads for status |
-| `/Library/Logs/Steadfast/daemon.log` | daemon stderr/stdout for debugging |
-
-`sudo blockme uninstall` removes every item in that table.
 
 ## Sharing this with a friend
 
@@ -174,38 +147,15 @@ They run the same three steps above. The build is reproducible on every Mac.
 - Xcode Command Line Tools (Step 1 above)
 - Admin password (just for install/add/uninstall)
 
-## Project structure (the whole tree, no hidden files)
+## Project layout
 
 ```
 .
-├── README.md, LICENSE, .gitignore
-├── Package.swift                    ← Swift Package Manager manifest
-├── install.sh                       ← what you run
-├── Install Blockme.command          ← double-click alias for install.sh
-├── Resources/
-│   └── BlockmeIcon.svg              ← icon source (rendered to .icns at build time)
-├── Sources/
-│   ├── SteadfastCore/               ← the entire backend as a Swift library
-│   │   ├── ResolverDirectoryManager.swift  ← writes /etc/resolver/<domain> files
-│   │   ├── NXDomainStub.swift              ← UDP server that always returns NXDOMAIN
-│   │   ├── HostsManager.swift              ← /etc/hosts managed section
-│   │   ├── BlocklistStore.swift            ← reads/writes the blocklist JSON
-│   │   ├── LaunchdManager.swift            ← install / uninstall / launchd plist
-│   │   ├── CLI.swift                       ← every subcommand
-│   │   ├── ActiveConnectionDisruptor.swift ← `pfctl -k` to drop live TCP on add
-│   │   ├── DomainNormalizer.swift          ← URL/host validation
-│   │   ├── Paths.swift                     ← every file path the daemon touches
-│   │   ├── PublicStatusStore.swift         ← the JSON the GUI reads
-│   │   └── Shell.swift                     ← Process wrapper
-│   ├── steadfast/                   ← thin CLI entrypoint
-│   └── blockme/                     ← the SwiftUI GUI app
-├── Tests/
-│   └── SteadfastCoreTests/          ← 11 unit tests, all green
-└── Scripts/
-    ├── sandbox-harness.sh           ← end-to-end test against a fake root prefix
-    ├── install-blockme-app.sh       ← packages + installs Blockme.app
-    ├── package-blockme-app.sh       ← builds Blockme.app
-    └── render-icon.swift            ← renders the SVG to PNG for iconutil
+├── Package.swift, install.sh, README.md, LICENSE
+├── Resources/      ← icon source
+├── Sources/        ← Swift library, CLI, and SwiftUI GUI
+├── Tests/          ← unit tests
+└── Scripts/        ← build + test helpers
 ```
 
 If you want to run the test suite:

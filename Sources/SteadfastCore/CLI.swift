@@ -93,21 +93,15 @@ public enum CLI {
 
             case "status":
                 print("installed: \(launchdManager.isInstalled() ? "yes" : "no")")
-                print("stub_listen: \(settings.stubListenAddress):\(settings.stubListenPort)")
-                print("private_relay_block: \(settings.includePrivateRelay ? "yes" : "no")")
+                let publicStatus = try publicStatusStore.load()
+                let blockedCount: Int
                 if isRoot() {
-                    let state = try store.load()
-                    print("blocked_domains: \(state.blockedDomains.count)")
-                    print("managed_hosts_section: \((try hostsManager.managedSectionPresent()) ? "yes" : "no")")
-                    print("hosts_immutable: \(hostsManager.isHostsFileImmutable() ? "yes" : "no")")
-                    print("managed_resolver_files: \(resolverManager.managedDomains().count)")
-                    let publicStatus = try publicStatusStore.load()
-                    printSnapshot(publicStatus)
+                    blockedCount = try store.load().blockedDomains.count
                 } else {
-                    let publicStatus = try publicStatusStore.load()
-                    print("blocked_domains: \(publicStatus.blockedDomains.count)")
-                    printSnapshot(publicStatus)
+                    blockedCount = publicStatus.blockedDomains.count
                 }
+                print("blocked_domains: \(blockedCount)")
+                printSnapshot(publicStatus)
                 return .success
 
             case "sync":
@@ -219,11 +213,7 @@ public enum CLI {
 
     private static func helpText() -> String {
         """
-        steadfast
-
-        A macOS domain blocker that is structurally fail-safe: it ONLY ever
-        affects DNS for the domains you explicitly block. Non-blocked traffic
-        uses the system's normal DNS path, untouched.
+        blockme — a macOS domain blocker that is structurally fail-safe.
 
         Usage:
           blockme install
@@ -236,22 +226,13 @@ public enum CLI {
 
         Aliases:
           steadfast <command> ...
-          blockme <command> ...
 
         Notes:
-          - Blockme is append-only by design. Adds are permanent until you
-            run `blockme uninstall` to remove the entire installation.
+          - Append-only by design. The only way to unblock a domain is
+            `sudo blockme uninstall`, which removes the entire installation.
           - Use sudo for install, add, list, sync, and reload-daemon.
           - Input can be a hostname or URL like https://instagram.com/reels.
-          - How it works:
-              * Writes /etc/resolver/<domain> files that route only the
-                blocked domains' queries to a local NXDOMAIN stub.
-              * The system's global DNS settings are NEVER touched.
-              * Apple-documented Private Relay block (NXDOMAIN for
-                mask.icloud.com) so Safari falls back to system DNS.
-              * /etc/hosts managed section as belt-and-suspenders.
-          - Set STEADFAST_DISABLE_PRIVATE_RELAY_BLOCK=1 to skip the Private
-            Relay handling (Safari with Private Relay on will leak through).
+          - Adding a domain blocks all of its subdomains automatically.
         """
     }
 
