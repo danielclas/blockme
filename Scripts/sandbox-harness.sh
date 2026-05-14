@@ -45,7 +45,7 @@ pass() {
 
 run_in_sandbox() {
   STEADFAST_ROOT_PREFIX="$SANDBOX" \
-    STEADFAST_STUB_LISTEN_PORT="$STUB_PORT" \
+    STEADFAST_SERVICE_BIND_PORT="$STUB_PORT" \
     "$BIN" "$@"
 }
 
@@ -203,7 +203,7 @@ pass "driver built"
 
 run_driver() {
   STEADFAST_ROOT_PREFIX="$SANDBOX" \
-    STEADFAST_STUB_LISTEN_PORT="$STUB_PORT" \
+    STEADFAST_SERVICE_BIND_PORT="$STUB_PORT" \
     "$DRIVER_BIN" "$@"
 }
 

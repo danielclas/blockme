@@ -57,15 +57,22 @@ public final class ResolverDirectoryManager {
                 let currentBytes = (try? Data(contentsOf: URL(fileURLWithPath: path))) ?? Data()
                 if currentBytes != expectedBytes {
                     if currentBytes.starts(with: Data(Self.markerLine.utf8)) || !FileManager.default.fileExists(atPath: path) {
+                        clearImmutable(at: path)
                         try expectedBytes.write(to: URL(fileURLWithPath: path), options: .atomic)
                         try tightenOwnership(path: path)
+                        setImmutable(at: path)
                         updated.append(name)
                     }
                     // If the file exists without our marker, leave it alone.
+                } else {
+                    // Content is correct — ensure the flag is still on, in
+                    // case something cleared it externally.
+                    setImmutable(at: path)
                 }
             } else {
                 try expectedBytes.write(to: URL(fileURLWithPath: path), options: .atomic)
                 try tightenOwnership(path: path)
+                setImmutable(at: path)
                 created.append(name)
             }
         }
@@ -75,6 +82,7 @@ public final class ResolverDirectoryManager {
         for existing in managed where !desired.contains(existing) {
             let path = filePath(for: existing)
             if isOurFile(at: path) {
+                clearImmutable(at: path)
                 try? FileManager.default.removeItem(atPath: path)
                 removed.append(existing)
             }
@@ -91,6 +99,7 @@ public final class ResolverDirectoryManager {
         for name in names {
             let path = filePath(for: name)
             if isOurFile(at: path) {
+                clearImmutable(at: path)
                 try? FileManager.default.removeItem(atPath: path)
                 removed.append(name)
             }
@@ -152,6 +161,16 @@ public final class ResolverDirectoryManager {
         guard !paths.isRedirectedRoot else { return }
         _ = try? Shell.run("/usr/sbin/chown", arguments: ["root:wheel", path], allowFailure: true)
         _ = try? Shell.run("/bin/chmod", arguments: ["644", path], allowFailure: true)
+    }
+
+    private func clearImmutable(at path: String) {
+        guard !paths.isRedirectedRoot, FileManager.default.fileExists(atPath: path) else { return }
+        _ = try? Shell.run("/usr/bin/chflags", arguments: ["nouchg", path], allowFailure: true)
+    }
+
+    private func setImmutable(at path: String) {
+        guard !paths.isRedirectedRoot, FileManager.default.fileExists(atPath: path) else { return }
+        _ = try? Shell.run("/usr/bin/chflags", arguments: ["uchg", path], allowFailure: true)
     }
 
     // MARK: - Rendering (also used by tests)

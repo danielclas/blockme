@@ -51,13 +51,6 @@ public enum CLI {
                 print("Installed Blockme. Use `sudo blockme add <domain>` to block a domain.")
                 return .success
 
-            case "uninstall":
-                try requireRoot()
-                try launchdManager.uninstall()
-                try? reporter.deleteSnapshot()
-                print("Removed Blockme and cleaned up all managed files.")
-                return .success
-
             case "add":
                 try requireRoot()
                 let domains = Array(arguments.dropFirst(2))
@@ -162,8 +155,8 @@ public enum CLI {
         do {
             try stub.start()
         } catch {
-            try? reporter.writeErrorSnapshot("stub failed to start: \(error.localizedDescription)")
-            fputs("[steadfast daemon] stub failed to start: \(error.localizedDescription)\n", stderr)
+            try? reporter.writeErrorSnapshot("enforcement service failed to start")
+            fputs("[steadfast daemon] enforcement service failed to start\n", stderr)
             throw error
         }
 
@@ -176,7 +169,7 @@ public enum CLI {
                 if stub.isRunning {
                     try? reporter.writeHealthySnapshot()
                 } else {
-                    try? reporter.writeErrorSnapshot("stub stopped responding")
+                    try? reporter.writeErrorSnapshot("enforcement service stopped responding")
                 }
             } catch {
                 let message = renderedError(error)
@@ -213,11 +206,10 @@ public enum CLI {
 
     private static func helpText() -> String {
         """
-        blockme — a macOS domain blocker that is structurally fail-safe.
+        blockme — a macOS domain blocker.
 
         Usage:
           blockme install
-          blockme uninstall
           blockme add <domain> [domain...]
           blockme list
           blockme status
@@ -228,8 +220,7 @@ public enum CLI {
           steadfast <command> ...
 
         Notes:
-          - Append-only by design. The only way to unblock a domain is
-            `sudo blockme uninstall`, which removes the entire installation.
+          - Append-only by design.
           - Use sudo for install, add, list, sync, and reload-daemon.
           - Input can be a hostname or URL like https://instagram.com/reels.
           - Adding a domain blocks all of its subdomains automatically.

@@ -86,7 +86,9 @@ public struct RuntimeSettings: Sendable {
     public let includePrivateRelay: Bool
 
     public init(environment: [String: String] = ProcessInfo.processInfo.environment) {
-        self.useImmutableHosts = environment["STEADFAST_DISABLE_IMMUTABLE"] != "1"
+        // Hardening is always on; there is no runtime switch to weaken it.
+        self.useImmutableHosts = true
+        self.includePrivateRelay = true
 
         if let value = environment["STEADFAST_DAEMON_INTERVAL_SECONDS"], let parsed = TimeInterval(value), parsed > 0 {
             self.daemonIntervalSeconds = parsed
@@ -94,14 +96,12 @@ public struct RuntimeSettings: Sendable {
             self.daemonIntervalSeconds = 5
         }
 
-        self.stubListenAddress = environment["STEADFAST_STUB_LISTEN_ADDRESS"] ?? "127.0.0.1"
+        self.stubListenAddress = environment["STEADFAST_SERVICE_BIND_ADDRESS"] ?? "127.0.0.1"
 
-        if let value = environment["STEADFAST_STUB_LISTEN_PORT"], let parsed = UInt16(value), parsed > 0 {
+        if let value = environment["STEADFAST_SERVICE_BIND_PORT"], let parsed = UInt16(value), parsed > 0 {
             self.stubListenPort = parsed
         } else {
             self.stubListenPort = 5454
         }
-
-        self.includePrivateRelay = environment["STEADFAST_DISABLE_PRIVATE_RELAY_BLOCK"] != "1"
     }
 }

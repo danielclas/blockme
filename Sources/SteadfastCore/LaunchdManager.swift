@@ -52,62 +52,44 @@ public final class LaunchdManager {
         try FileManager.default.createDirectory(
             at: URL(fileURLWithPath: paths.logDirectoryPath),
             withIntermediateDirectories: true,
-            attributes: [.posixPermissions: 0o755]
+            attributes: [.posixPermissions: 0o700]
         )
+        tightenLogDirectoryIfNeeded()
 
+        clearImmutableIfNeeded(at: paths.installedBinaryPath)
         try replaceItem(atPath: paths.installedBinaryPath, withItemAtPath: currentExecutablePath)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: paths.installedBinaryPath)
-        try tightenRootOwnership(atPath: paths.installedBinaryPath, mode: "755")
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: paths.installedBinaryPath)
+        try tightenRootOwnership(atPath: paths.installedBinaryPath, mode: "555")
+        setImmutableIfNeeded(at: paths.installedBinaryPath)
 
+        clearImmutableIfNeeded(at: paths.userFacingBinaryPath)
         if FileManager.default.fileExists(atPath: paths.userFacingBinaryPath) {
             try FileManager.default.removeItem(atPath: paths.userFacingBinaryPath)
         }
         try FileManager.default.createSymbolicLink(atPath: paths.userFacingBinaryPath, withDestinationPath: paths.installedBinaryPath)
+        setImmutableIfNeeded(at: paths.userFacingBinaryPath)
 
+        clearImmutableIfNeeded(at: paths.userFacingBlockmeBinaryPath)
         if FileManager.default.fileExists(atPath: paths.userFacingBlockmeBinaryPath) {
             try FileManager.default.removeItem(atPath: paths.userFacingBlockmeBinaryPath)
         }
         try FileManager.default.createSymbolicLink(atPath: paths.userFacingBlockmeBinaryPath, withDestinationPath: paths.installedBinaryPath)
+        setImmutableIfNeeded(at: paths.userFacingBlockmeBinaryPath)
         try tightenRootOwnership(atPath: (paths.userFacingBinaryPath as NSString).deletingLastPathComponent, mode: "755")
 
+        clearImmutableIfNeeded(at: paths.launchDaemonPlistPath)
         let plist = renderLaunchDaemonPlist()
         try Data(plist.utf8).write(to: URL(fileURLWithPath: paths.launchDaemonPlistPath), options: .atomic)
         try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: paths.launchDaemonPlistPath)
         try tightenRootOwnership(atPath: paths.launchDaemonPlistPath, mode: "644")
+        setImmutableIfNeeded(at: paths.launchDaemonPlistPath)
 
-        // Write the resolver files and hosts entries up front so blocking is
-        // active even before the daemon binds the stub socket. Worst case if
-        // the stub never binds: blocked lookups time out / return SERVFAIL.
-        // Critically, NON-blocked lookups never touch our resolver files, so
-        // they are unaffected.
+        // Activate enforcement before the service finishes starting.
         _ = try resolverManager.sync(blockedDomains: state.blockedDomains)
         _ = try hostsManager.sync(blockedDomains: state.blockedDomains)
         flushDNSCacheIfNeeded()
 
         try reloadDaemonIfNeeded()
-    }
-
-    public func uninstall() throws {
-        _ = try? Shell.run("/bin/launchctl", arguments: ["bootout", "system", paths.launchDaemonPlistPath], allowFailure: true)
-
-        // Clean up everything we wrote, in best-effort order. Each step is
-        // independently safe — none of them depend on global DNS state.
-        _ = try? resolverManager.removeAllManagedFiles()
-        try? hostsManager.removeManagedSection()
-        flushDNSCacheIfNeeded()
-
-        if FileManager.default.fileExists(atPath: paths.launchDaemonPlistPath) {
-            try FileManager.default.removeItem(atPath: paths.launchDaemonPlistPath)
-        }
-        if FileManager.default.fileExists(atPath: paths.userFacingBinaryPath) {
-            try FileManager.default.removeItem(atPath: paths.userFacingBinaryPath)
-        }
-        if FileManager.default.fileExists(atPath: paths.userFacingBlockmeBinaryPath) {
-            try FileManager.default.removeItem(atPath: paths.userFacingBlockmeBinaryPath)
-        }
-        if FileManager.default.fileExists(atPath: paths.installedBinaryPath) {
-            try FileManager.default.removeItem(atPath: paths.installedBinaryPath)
-        }
     }
 
     public func isInstalled() -> Bool {
@@ -126,6 +108,12 @@ public final class LaunchdManager {
         guard !paths.isRedirectedRoot else { return }
         _ = try? Shell.run("/usr/bin/dscacheutil", arguments: ["-flushcache"], allowFailure: true)
         _ = try? Shell.run("/usr/bin/killall", arguments: ["-HUP", "mDNSResponder"], allowFailure: true)
+    }
+
+    private func tightenLogDirectoryIfNeeded() {
+        guard !paths.isRedirectedRoot else { return }
+        _ = try? Shell.run("/usr/sbin/chown", arguments: ["root:wheel", paths.logDirectoryPath], allowFailure: true)
+        _ = try? Shell.run("/bin/chmod", arguments: ["700", paths.logDirectoryPath], allowFailure: true)
     }
 
     private func renderLaunchDaemonPlist() -> String {
@@ -167,5 +155,15 @@ public final class LaunchdManager {
         guard !paths.isRedirectedRoot else { return }
         _ = try? Shell.run("/usr/sbin/chown", arguments: ["root:wheel", path], allowFailure: true)
         _ = try? Shell.run("/bin/chmod", arguments: [mode, path], allowFailure: true)
+    }
+
+    private func clearImmutableIfNeeded(at path: String) {
+        guard !paths.isRedirectedRoot, FileManager.default.fileExists(atPath: path) else { return }
+        _ = try? Shell.run("/usr/bin/chflags", arguments: ["nouchg", path], allowFailure: true)
+    }
+
+    private func setImmutableIfNeeded(at path: String) {
+        guard !paths.isRedirectedRoot, FileManager.default.fileExists(atPath: path) else { return }
+        _ = try? Shell.run("/usr/bin/chflags", arguments: ["uchg", path], allowFailure: true)
     }
 }

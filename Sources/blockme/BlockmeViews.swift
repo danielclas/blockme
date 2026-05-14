@@ -433,8 +433,6 @@ struct FooterView: View {
                 Text("Disconnected")
                     .foregroundStyle(Theme.red)
                 Spacer()
-                Text("Build dev")
-                    .foregroundStyle(Theme.ink4)
             case .active, .empty:
                 PulseDot(color: Theme.green)
                 Text("Service running")

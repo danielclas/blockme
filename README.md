@@ -1,6 +1,6 @@
 # Blockme
 
-A macOS website blocker. Append-only by design. Structurally fail-safe: only blocked domains are ever affected — non-blocked traffic uses the system's normal DNS path, untouched. Runs without a paid Apple Developer Team.
+A macOS website blocker. Append-only by design. Structurally fail-safe: only blocked domains are ever affected — all other traffic is untouched. Runs without a paid Apple Developer Team.
 
 ## Install
 
@@ -23,15 +23,6 @@ blockme status
 ```
 
 Adding a domain blocks all of its subdomains automatically. The GUI at `~/Applications/Blockme.app` exposes the same add/list functionality.
-
-## Browser caveats
-
-Chrome and Firefox can be configured with DNS-over-HTTPS, which bypasses the system resolver entirely. To ensure blocking applies in those browsers, disable DoH:
-
-- Chrome: `chrome://settings/security` → turn off "Use secure DNS"
-- Firefox: `about:preferences#privacy` → uncheck "Enable DNS over HTTPS"
-
-Safari is fully covered without configuration.
 
 ## Requirements
 
